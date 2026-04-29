@@ -1,7 +1,7 @@
-# Button Scroll
+# Scroll Button
 
-This dynamic button scroll to recent button helps users to quickly navigate to the most recent bar. 
-The button is intelligently designed to appear when the chart is scrolled back and disappear 
+This dynamic scroll button helps users to quickly navigate to the most recent bar.
+The button is intelligently designed to appear when the chart is scrolled back and disappear
 when the chart is at the most recent bar, enhancing the user's chart navigation experience.
 
 ## Table of Contents
@@ -18,19 +18,19 @@ when the chart is at the most recent bar, enhancing the user's chart navigation 
 ## Features
 
 - Button appears when you scroll back on the chart and disappears when you are at the most recent bar.
-- Click the button to instantly scroll the chart to the most recent data.
+- Click the button to instantly scroll the chart to the most recent bar.
 - Place the button on the chart where it is easily accessible.
 - Helps traders focus on the latest market developments and make timely decisions.
 
 ## Installation
 
-1. Download the Script: Download the Scroll_To_Recent.mq5 file from this repository.
+1. Download the Script: Download the Scroll Button.mq5 file from this repository.
 2. Open MetaTrader 5
    - Launch MetaTrader 5.
    - Go to `File` -> `Open Data Folder`.
 3. Place the Script
    - Navigate to `MQL5` -> `Indicators`.
-   - Copy the `Button Scroll.mq5` file into the Indicators folder.
+   - Copy the `Scroll Button.mq5` file into the Indicators folder.
 4. Refresh MetaTrader 5
    - Restart MetaTrader 5 or right-click in the Navigator window and select Refresh.
 
@@ -38,8 +38,8 @@ when the chart is at the most recent bar, enhancing the user's chart navigation 
 
 1. Load the Script
    - Open MetaTrader 5.
-   - In the Navigator window, find the `Button Scroll` script under `Indicators`.
-   - Drag and drop the `Button Scroll` script onto the chart where you want to use it.
+   - In the Navigator window, find the `Scroll Button` script under `Indicators`.
+   - Drag and drop the `Scroll Button` script onto the chart where you want to use it.
 2. Interact with the Button
    - The "Button Scroll" button will appear at the bottom-right corner of the chart when you scroll back.
    - Click the button to immediately scroll to the most recent bar.
@@ -47,63 +47,71 @@ when the chart is at the most recent bar, enhancing the user's chart navigation 
 
 ## Inputs
 
-- **Button Color**: Specifies the background color of the button.
-- **Text Color**: Specifies the color of the button text.
+### 🔹 STYLE Group
+| Input                    | Description                                                           |
+|--------------------------|-----------------------------------------------------------------------|
+| `Button size`            | Sets the width and height of the button.                              |    
+| `Button color`           | Defines the background color of the button.                           |
+| `Text color`             | Sets the color of the text displayed on the button.                   |
+
+### 🔹 POSITION Group
+| Input                         | Description                                                      |
+|-------------------------------|------------------------------------------------------------------|
+| `X distance from the corner`  | Horizontal distance of the button from the selected chart corner.|
+| `Y distance from the corner`  | Vertical distance of the button from the selected chart corner.  |
+
 
 ## Customization
 
-You can customize the size and position of the x and y axes of the button by modifying the following defines in the script
-
+You can customize the name of the object by modifying the following text in the script.
 ```mql5
-#define BUTTON_X_POSITION 50
-#define BUTTON_Y_POSITION 50
-#define BUTTON_WIDTH      25
-#define BUTTON_HEIGHT     25
+#define BUTTON_NAME "Scroll Button"
 ```
 
 ## Script Code
-Below is the MQL5 code used to create the "Button Scroll" button
+Below is the MQL5 code used to create the "Scroll Button" button
 ```mql5
 //+------------------------------------------------------------------+
-//|                                                Button Scroll.mq5 |
+//|                                                Scroll Button.mq5 |
 //|                                         Copyright © 2024, FaceND |
 //|                          https://github.com/FaceND/Button_Scroll |
 //+------------------------------------------------------------------+
-#property copyright "Copyright © 2024, FaceND"
-#property link      "https://github.com/FaceND/Button_Scroll"
-
-#property description "The button scroll to recent provides a convenient button"
-#property description "for quickly scrolling to the most recent data on the chart."
-#property description ""
-#property description "It enhances the user experience by allowing traders to easily"
-#property description "navigate to the latest price action without manually scrolling"
-#property description "through historical data."
+#property copyright    "Copyright © 2024, FaceND"
+#property link         "https://github.com/FaceND/Scroll_Button"
+#property version      "1.3"
+#property description  "The button scroll to recent provides a convenient button"
+#property description  "for quickly scrolling to the most recent data on the chart."
+#property description  ""
+#property description  "It enhances the user experience by allowing traders to easily"
+#property description  "navigate to the latest price action without manually scrolling"
+#property description  "through historical data."
 
 #property indicator_chart_window
 #property indicator_plots 0
 
-#define BUTTON_NAME "RecentButton"
-
-#define BUTTON_X_POSITION 50
-#define BUTTON_Y_POSITION 50
-#define BUTTON_WIDTH      25
-#define BUTTON_HEIGHT     25
+#define BUTTON_NAME "Scroll Button"
 
 input group "STYLE"
-input color  buttonColor  = clrWhite;   // Button color
-input color  textColor    = clrBlack;   // Text color
+input int    buttonSize   = 25;        // Button size
+input color  buttonColor  = clrWhite;  // Button color
+input color  textColor    = clrBlack;  // Text color
 
-bool button_active = false;
+input group "POSITION"
+input int    X_Position   = 50;        // X distance from the corner
+input int    Y_Position   = 50;        // Y distance from the corner
+
+bool  button_active = false;
+ulong previous_time = 0;
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   EventSetMillisecondTimer(500);
    if(!CreateButton())
      {
       return INIT_FAILED;
      }
+   UpdateButton();
    return INIT_SUCCEEDED;
   }
 //+------------------------------------------------------------------+
@@ -113,6 +121,7 @@ void OnDeinit(const int reason)
   {
    EventKillTimer();
    ObjectDelete(0, BUTTON_NAME);
+
    ChartRedraw();
   }
 //+------------------------------------------------------------------+
@@ -120,6 +129,15 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTimer()
   {
+   if(button_active)
+     {
+      ShowButton();
+     }
+   else
+     {
+      HideButton();
+     }
+   EventKillTimer();
    UpdateButton();
   }
 //+------------------------------------------------------------------+
@@ -146,9 +164,16 @@ void OnChartEvent(const int                 id,
                   const double         &dparam,
                   const string         &sparam)
   {
-   if(id == CHARTEVENT_OBJECT_CLICK && sparam == BUTTON_NAME)
+   if(id == CHARTEVENT_CHART_CHANGE)
      {
-      ScrollToEnd();
+      if(GetTickCount64() > previous_time + 50)
+        {
+         UpdateButton();
+        }
+     }
+   else if(id == CHARTEVENT_OBJECT_CLICK && sparam == BUTTON_NAME)
+     {
+      NavigateToEnd();
      }
   }
 //+------------------------------------------------------------------+
@@ -176,8 +201,8 @@ bool CreateButton()
          return false;
         }
       //-- Set button properties
-      ObjectSetInteger(0, BUTTON_NAME, OBJPROP_XSIZE,        BUTTON_WIDTH);
-      ObjectSetInteger(0, BUTTON_NAME, OBJPROP_YSIZE,        BUTTON_HEIGHT);
+      ObjectSetInteger(0, BUTTON_NAME, OBJPROP_XSIZE,        buttonSize);
+      ObjectSetInteger(0, BUTTON_NAME, OBJPROP_YSIZE,        buttonSize);
       ObjectSetInteger(0, BUTTON_NAME, OBJPROP_BGCOLOR,      buttonColor);
       ObjectSetInteger(0, BUTTON_NAME, OBJPROP_BORDER_COLOR, buttonColor);
      }
@@ -200,6 +225,7 @@ bool CreateButton()
 void UpdateButton()
   {
    ResetLastError();
+   previous_time = GetTickCount64();
    //--- Check if autoscroll is disabled
    if(!ChartGetInteger(0, CHART_AUTOSCROLL))
      {
@@ -209,46 +235,52 @@ void UpdateButton()
       long visibleBarsCount     = ChartGetInteger(0,
                                     CHART_VISIBLE_BARS)-1;
       //+------------------------------------------------------------+
-      if(firstVisibleBarIndex == visibleBarsCount)
-        { 
-         HideButton();
-         button_active = false;
+      if(firstVisibleBarIndex <= visibleBarsCount)
+        {
+        if(button_active)
+           {
+            button_active = false;
+            ResetTimer();
+            return;
+           }
         }
       else
         {
          if(!button_active)
            {
-            ShowButton();
             button_active = true;
+            ResetTimer();
+            return;
            }
         }
      }
    else
      {
-      ScrollToEnd();
+      NavigateToEnd(button_active);
+      return;
      }
   }
 //+------------------------------------------------------------------+
 //| Function to scroll the chart to the end                          |
 //+------------------------------------------------------------------+
-void ScrollToEnd()
+void NavigateToEnd(const bool clear_button = true)
   {
    ChartNavigate(0, CHART_END);
-   if(button_active)
+   if(clear_button)
      {
       HideButton();
       button_active = false;
+      EventKillTimer();
      }
   }
 //+------------------------------------------------------------------+
 //| Function to show button on the chart                             |
 //+------------------------------------------------------------------+
-void ShowButton() 
+void ShowButton()
   {
-   ObjectSetInteger(0, BUTTON_NAME, OBJPROP_XDISTANCE, BUTTON_X_POSITION);
-   ObjectSetInteger(0, BUTTON_NAME, OBJPROP_YDISTANCE, BUTTON_Y_POSITION);
-   ObjectSetInteger(0, BUTTON_NAME, OBJPROP_STATE, false);
-   
+   ObjectSetInteger(0, BUTTON_NAME, OBJPROP_XDISTANCE, X_Position);
+   ObjectSetInteger(0, BUTTON_NAME, OBJPROP_YDISTANCE, Y_Position);
+
    ChartRedraw();
   }
 //+------------------------------------------------------------------+
@@ -258,8 +290,17 @@ void HideButton()
   {
    ObjectSetInteger(0, BUTTON_NAME, OBJPROP_XDISTANCE, INT_MAX);
    ObjectSetInteger(0, BUTTON_NAME, OBJPROP_YDISTANCE, INT_MAX);
-   
+   ObjectSetInteger(0, BUTTON_NAME, OBJPROP_STATE, false);
+
    ChartRedraw();
+  }
+//+------------------------------------------------------------------+
+//| Function to reset Timer function                                 |
+//+------------------------------------------------------------------+
+void ResetTimer(const int ms = 300)
+  {
+   EventKillTimer();
+   EventSetMillisecondTimer(ms);
   }
 //+------------------------------------------------------------------+
 ```
