@@ -63,7 +63,7 @@ when the chart is at the most recent bar, enhancing the user's chart navigation 
 
 You can customize the name of the object by modifying the following text in the script.
 ```mql5
-#define BUTTON_NAME "Scroll Button"
+#define BUTTON_NAME "Scroll_Button"
 ```
 
 ## Contributing
